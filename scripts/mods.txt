@@ -48,9 +48,8 @@ mr|ars-nouveau
 mr|irons-spells-n-spellbooks
 mr|apotheosis
 mr|artifacts
-mr|minecolonies
-mr|structurize
-mr|domum-ornamentum
-mr|ftb-quests-optimizer
+cf|minecolonies
+cf|structurize
+cf|domum-ornamentum
 # Optional experimental AI companion, excluded from stable pack until validated.
-# mr|ai-buddies
+# cf|ai-buddies
