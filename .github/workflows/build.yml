@@ -18,25 +18,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install official packwiz binary
+      - name: Go 1.24
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Install packwiz
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p .tools
-          curl -fsSL \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            'https://api.github.com/repos/packwiz/packwiz/actions/artifacts/8109649028/zip' \
-            -o .tools/packwiz.zip
-          unzip -oq .tools/packwiz.zip -d .tools/extracted
-          BIN=$(find .tools/extracted -type f -name 'packwiz' | head -n 1)
-          test -n "$BIN"
-          cp "$BIN" .tools/packwiz
-          chmod +x .tools/packwiz
-          .tools/packwiz --help >/dev/null
-          echo "$GITHUB_WORKSPACE/.tools" >> "$GITHUB_PATH"
+          go install github.com/packwiz/packwiz@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          packwiz --help >/dev/null
       - name: Build QuestForge
         run: python3 scripts/build_ci.py
       - name: Upload ready package
