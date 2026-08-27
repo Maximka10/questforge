@@ -14,60 +14,66 @@ Minecraft 1.20.1 is used because it has a mature Forge ecosystem. Forge 47.4.23 
 
 ## Design
 
-QuestForge is intentionally not a 300-mod kitchen sink. The core loop is:
+QuestForge is intentionally not a kitchen sink. The core loop is:
 
 `survival → exploration → base → storage → Create automation → Mekanism progression → magic → dangerous structures → MineColonies → advanced automation → endgame projects`
 
 The pack uses FTB Quests as the progression layer. Quest data is kept in the repository so the book is part of the project, not an afterthought.
 
-## AI / NPC
+## What the build produces
 
-The pack treats NPC automation as a first-class gameplay system through MineColonies. An experimental profile for **AI-Buddies** is documented separately. AI-Buddies is a Forge 1.20.1 mod with local/simple chat-command companions and no third-party API key requirement, but it has a much smaller adoption footprint than the core pack, so it is not part of the default profile until it passes the same startup and gameplay checks as the core pack.
-
-## Repository layout
+The build workflow produces a **ready `.minecraft` tree**, including:
 
 ```text
-config/                 Shared configuration
-defaultconfigs/         Default server configs
-kubejs/                 Recipes and balance scripts
-quests/                 Quest Book source/data
-scripts/                Bootstrap/build/diagnostic scripts
-server/                 Dedicated-server helpers
-packwiz/                Pack metadata and generated mod metadata
-.github/workflows/      Automated build validation
-docs/                   Design and compatibility notes
+QuestForge-ready/
+├── versions/1.20.1-forge-47.4.23/
+├── mods/
+├── config/
+├── defaultconfigs/
+├── kubejs/
+├── resourcepacks/
+├── shaderpacks/
+└── INSTALL.txt
 ```
 
-## First setup on Windows
+The `versions/1.20.1-forge-47.4.23` directory is intended to be copied to `.minecraft/versions/`. The other directories go beside it in `.minecraft`.
+
+The official Minecraft launcher may download missing vanilla libraries/assets on first launch. That is normal; those files are not distributed by this repository.
+
+## AI / NPC
+
+The stable NPC layer is **MineColonies**. Citizens have jobs and builders can construct structures, making NPCs a real part of progression rather than a cosmetic addition.
+
+An experimental AI-Buddies profile is documented separately. It is not included in the stable package until it passes a clean Forge 1.20.1 startup and gameplay validation.
+
+## Quest Book
+
+The generated book contains 10 progression chapters and 40 quests covering onboarding, exploration, building, storage, technology, magic, combat, colonies, advanced automation and endgame. Dependencies connect the chapters into a progression path.
+
+## Installation on Windows
 
 1. Install 64-bit Java 17.
-2. Clone this repository.
-3. Run `scripts\\bootstrap.ps1` from PowerShell.
-4. The script downloads packwiz if needed, initializes the pack metadata and installs the pinned mod set defined in `scripts\\mods.txt`.
-5. Run `scripts\\build.ps1` to refresh the index and create a distributable `.mrpack`.
-
-The first bootstrap requires internet access because mod binaries are deliberately not committed to Git.
-
-## Updating
-
-Do not blindly run `packwiz update --all`. Review updates in a branch, run the validation workflow, launch a clean client and create a new world before merging.
-
-## Server
-
-The same pack metadata can be used for a dedicated Forge server. Client-only mods must stay client-only. Server setup is documented in `docs/server.md` and automated by `scripts\\server.ps1`.
+2. Download the `QuestForge-1.20.1-Forge-47.4.23-ready.zip` artifact from the latest successful GitHub Actions build.
+3. Extract it.
+4. Copy the contents of `drop-in/` into `%APPDATA%\\.minecraft`.
+5. Launch the Forge 1.20.1-47.4.23 profile.
+6. Start a new world for the first validation run.
 
 ## Troubleshooting
 
 ### If Minecraft does not launch
 
-1. Verify that Java reports version 17 and is 64-bit.
-2. Verify Forge is 47.4.23.
-3. Delete the generated `mods` cache only if the bootstrap reports a corrupted download.
-4. Run `scripts\\diagnose.ps1`.
-5. Check `logs\\latest.log` and search for the first `Caused by:` block, not just the final crash line.
-6. If the error names a dependency, rerun bootstrap so packwiz can resolve the dependency graph.
-7. If the error is caused by a mod update, restore the last known-good commit rather than mixing arbitrary versions.
+1. Verify Java is version 17 and 64-bit.
+2. Verify the selected profile is Forge 47.4.23 on Minecraft 1.20.1.
+3. Check `.minecraft/logs/latest.log`.
+4. Find the first `Caused by:` block rather than only the last crash line.
+5. If a dependency is missing, rebuild from this repository so packwiz regenerates the locked dependency graph.
+6. Do not mix jars from another modpack into the QuestForge `mods` directory.
 
-## Status
+## Server
 
-The repository is being built as a reproducible packwiz project. The mod list, quest structure and automation are version-controlled; the CI workflow is the authoritative clean-build check.
+See `docs/server.md`. Client-only mods must not be copied to a dedicated server manually.
+
+## Development
+
+`scripts\\bootstrap.ps1` initializes the pack and resolves the manifest. `scripts\\generate_quests.py` generates the Quest Book. `scripts\\build.ps1` refreshes the pack and exports it. GitHub Actions is the authoritative clean-build validation.
