@@ -131,7 +131,9 @@ def main() -> int:
     if minecraft.exists():
         shutil.rmtree(minecraft)
     minecraft.mkdir()
-    run('java', '-Djava.awt.headless=true', '-jar', str(FORGE_INSTALLER), '--installClient', '--targetDir', str(minecraft))
+    # Forge's 1.20.1 client installer requires launcher_profiles.json and accepts the target as the --installClient argument.
+    (minecraft / 'launcher_profiles.json').write_text('{}\n', encoding='utf-8')
+    run('java', '-Djava.awt.headless=true', '-jar', str(FORGE_INSTALLER), '--installClient', str(minecraft))
 
     version_dir = minecraft / 'versions' / '1.20.1-forge-47.4.23'
     if not (version_dir / '1.20.1-forge-47.4.23.json').exists() or not (version_dir / '1.20.1-forge-47.4.23.jar').exists():
