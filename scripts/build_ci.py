@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / '.tools'
@@ -31,8 +30,7 @@ def sha1(path: Path) -> str:
 def download(url: str, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f'Downloading {url}', flush=True)
-    with urlopen(url, timeout=120) as r, dest.open('wb') as f:
-        shutil.copyfileobj(r, f)
+    run('curl', '-fL', '--retry', '4', '--retry-all-errors', '--retry-delay', '2', '-A', 'Mozilla/5.0 QuestForgeBuilder/1.0', url, '-o', str(dest))
 
 
 def ensure_packwiz() -> None:
@@ -41,7 +39,7 @@ def ensure_packwiz() -> None:
     if found:
         PACKWIZ = Path(found)
     if not PACKWIZ.exists():
-        raise RuntimeError('packwiz is not installed; CI must install github.com/packwiz/packwiz before running this script')
+        raise RuntimeError('packwiz is not installed; CI must install an official packwiz binary first')
     PACKWIZ.chmod(PACKWIZ.stat().st_mode | 0o111)
 
 
