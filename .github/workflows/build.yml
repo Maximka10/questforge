@@ -26,7 +26,7 @@ jobs:
           set -euo pipefail
           go install github.com/packwiz/packwiz@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-          "$(go env GOPATH)/bin/packwiz" --version
+          test -x "$(go env GOPATH)/bin/packwiz"
       - name: Build QuestForge
         run: python3 scripts/build_ci.py
       - name: Upload ready package
