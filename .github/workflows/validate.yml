@@ -1,0 +1,53 @@
+name: Validate QuestForge
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-pack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download packwiz
+        run: |
+          mkdir -p .tools
+          curl -L 'https://nightly.link/packwiz/packwiz/workflows/go/main/Linux%2064-bit.zip' -o .tools/packwiz.zip
+          unzip -o .tools/packwiz.zip -d .tools
+          chmod +x .tools/packwiz
+
+      - name: Initialize and resolve mods
+        shell: bash
+        run: |
+          .tools/packwiz init --reinit -y --name QuestForge --author Maximka10 --version 0.1.0 --mc-version 1.20.1 --modloader forge --forge-version 47.4.23
+          while IFS='|' read -r source slug; do
+            [[ -z "$source" || "$source" == \#* ]] && continue
+            case "$source" in
+              cf) .tools/packwiz cf install "$slug" -y ;;
+              mr) .tools/packwiz mr install "$slug" -y ;;
+              *) echo "Unsupported source: $source"; exit 1 ;;
+            esac
+          done < <(grep -v '^\s*#' scripts/mods.txt | grep -v '^\s*$')
+
+      - name: Generate quests
+        run: python3 scripts/generate_quests.py
+
+      - name: Refresh index
+        run: .tools/packwiz refresh
+
+      - name: Export Modrinth pack
+        run: .tools/packwiz modrinth export -o QuestForge-ci.mrpack
+
+      - name: Verify export exists
+        run: test -s QuestForge-ci.mrpack
