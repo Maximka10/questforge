@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import shutil
 import subprocess
 import sys
-import urllib.request
-import zipfile
 from pathlib import Path
+from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / '.tools'
@@ -33,7 +31,7 @@ def sha1(path: Path) -> str:
 def download(url: str, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f'Downloading {url}', flush=True)
-    with urllib.request.urlopen(url, timeout=120) as r, dest.open('wb') as f:
+    with urlopen(url, timeout=120) as r, dest.open('wb') as f:
         shutil.copyfileobj(r, f)
 
 
@@ -69,16 +67,15 @@ def test_server() -> None:
     server.mkdir()
     installer = server / 'forge-installer.jar'
     shutil.copy2(FORGE_INSTALLER, installer)
-    run('java', '-Djava.awt.headless=true', '-jar', str(installer), '--installServer', str(server), cwd=ROOT)
+    run('java', '-Djava.awt.headless=true', '-jar', str(installer), '--installServer', str(server))
 
     client_only = {
         'jei', 'embeddium', 'oculus', 'entityculling', 'controlling', 'mouse-tweaks',
         'xaeros-minimap', 'xaeros-world-map', 'appleskin'
     }
-    mods_src = ROOT / 'mods'
     mods_dst = server / 'mods'
     mods_dst.mkdir(exist_ok=True)
-    for jar in mods_src.glob('*.jar'):
+    for jar in (ROOT / 'mods').glob('*.jar'):
         name = jar.name.lower()
         if any(token in name for token in client_only):
             continue
@@ -88,20 +85,16 @@ def test_server() -> None:
         if src.exists():
             shutil.copytree(src, server / rel, dirs_exist_ok=True)
     (server / 'eula.txt').write_text('eula=true\n', encoding='utf-8')
-    jvm_args = server / 'user_jvm_args.txt'
-    if not jvm_args.exists():
-        jvm_args.write_text('', encoding='utf-8')
+    (server / 'user_jvm_args.txt').touch(exist_ok=True)
     unix_args = server / 'libraries' / 'net' / 'minecraftforge' / 'forge' / '1.20.1-47.4.23' / 'unix_args.txt'
     if not unix_args.exists():
-        raise RuntimeError(f'Forge server unix_args.txt missing: {unix_args}')
+        raise RuntimeError(f'Forge server args missing: {unix_args}')
 
     log = server / 'server.log'
     with log.open('w', encoding='utf-8') as fh:
         proc = subprocess.Popen(
             ['java', '@user_jvm_args.txt', '@libraries/net/minecraftforge/forge/1.20.1-47.4.23/unix_args.txt', 'nogui'],
-            cwd=server,
-            stdout=fh,
-            stderr=subprocess.STDOUT,
+            cwd=server, stdout=fh, stderr=subprocess.STDOUT,
         )
         try:
             code = proc.wait(timeout=150)
@@ -115,8 +108,7 @@ def test_server() -> None:
             code = 124
     text = log.read_text(encoding='utf-8', errors='replace')
     print(text[-12000:], flush=True)
-    fatal_markers = ('ModLoadingException', 'Exception in server tick loop', 'FATAL', 'ERROR')
-    bad = [line for line in text.splitlines() if any(marker in line for marker in fatal_markers)]
+    bad = [line for line in text.splitlines() if any(x in line for x in ('ModLoadingException', 'Exception in server tick loop', 'FATAL', 'ERROR'))]
     if bad:
         raise RuntimeError('Dedicated server reported fatal/error lines:\n' + '\n'.join(bad[-30:]))
     if code not in (0, 124):
@@ -126,10 +118,8 @@ def test_server() -> None:
 def main() -> int:
     TOOLS.mkdir(parents=True, exist_ok=True)
     ensure_packwiz()
-    run(str(PACKWIZ), '--version')
     run(str(PACKWIZ), 'init', '--reinit', '-y', '--name', 'QuestForge', '--author', 'Maximka10', '--version', '0.1.0', '--mc-version', '1.20.1', '--modloader', 'forge', '--forge-version', '47.4.23')
     install_mods()
-
     run(sys.executable, str(ROOT / 'scripts' / 'generate_quests.py'))
     run(str(PACKWIZ), 'refresh')
     run(str(PACKWIZ), 'modrinth', 'export', '-o', 'QuestForge.mrpack')
@@ -146,10 +136,8 @@ def main() -> int:
     run('java', '-Djava.awt.headless=true', '-jar', str(FORGE_INSTALLER), '--installClient', '--targetDir', str(minecraft))
 
     version_dir = minecraft / 'versions' / '1.20.1-forge-47.4.23'
-    if not (version_dir / '1.20.1-forge-47.4.23.json').exists():
-        raise RuntimeError(f'Forge version JSON missing: {version_dir}')
-    if not (version_dir / '1.20.1-forge-47.4.23.jar').exists():
-        raise RuntimeError(f'Forge version JAR missing: {version_dir}')
+    if not (version_dir / '1.20.1-forge-47.4.23.json').exists() or not (version_dir / '1.20.1-forge-47.4.23.jar').exists():
+        raise RuntimeError(f'Forge client profile incomplete: {version_dir}')
 
     test_server()
 
