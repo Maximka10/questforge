@@ -1,0 +1,73 @@
+# QuestForge 0.1.0
+# Format: source|slug-or-file-url
+# packwiz resolves dependencies automatically.
+# Core / quests
+cf|ftb-library-forge
+cf|ftb-quests-forge
+cf|ftb-xmod-compat
+cf|jei
+cf|jade
+cf|controlling
+cf|configured
+cf|mouse-tweaks
+cf|polymorph
+cf|appleskin
+
+# Performance
+cf|embeddium
+cf|oculus
+cf|ferritecore
+cf|modernfix
+cf|clumps
+cf|entityculling
+
+# Navigation / QoL
+cf|waystones
+cf|nature-compass
+cf|explorers-compass
+cf|corpse
+cf|carry-on
+
+# World / exploration
+cf|alexs-caves
+cf|citadel
+cf|biomes-o-plenty
+cf|yungs-better-dungeons
+cf|yungs-better-strongholds
+cf|yungs-api
+cf|when-dungeons-arise
+
+# Building / decoration
+cf|builders-delight
+cf|chipped
+cf|framedblocks
+cf|supplementaries
+cf|moonlight
+
+# Storage / inventory
+cf|sophisticated-core
+cf|sophisticated-backpacks
+cf|functional-storage
+cf|storagedrawers
+
+# Technology / automation
+cf|create
+cf|create-steam-n-rails
+cf|mekanism
+cf|mekanism-generators
+cf|farmers-delight
+cf|create-fabric? # placeholder rejected by validation; remove if not found
+
+# Magic / combat
+cf|ars-nouveau
+cf|irons-spells-n-spellbooks
+cf|apotheosis
+cf|artifacts
+
+# NPC / colony
+cf|minecolonies
+cf|structurize
+cf|domum-ornamentum
+
+# Experimental AI companion, intentionally isolated from the default profile.
+# cf|ai-buddies
