@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build:
@@ -18,15 +19,30 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-
-      - name: Install packwiz
-        run: go install github.com/packwiz/packwiz@latest
-
-      - name: Put packwiz on PATH
-        run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Install packwiz from latest official build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tools
+          RUN_JSON=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/packwiz/packwiz/actions/runs?status=success&per_page=20')
+          RUN_ID=$(printf '%s' "$RUN_JSON" | jq -r '.workflow_runs[] | select(.name == "Go") | .id' | head -n1)
+          test -n "$RUN_ID" && test "$RUN_ID" != "null"
+          ART_JSON=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/packwiz/packwiz/actions/runs/${RUN_ID}/artifacts")
+          ART_ID=$(printf '%s' "$ART_JSON" | jq -r '.artifacts[] | select(.name | test("Linux 64-bit")) | .id' | head -n1)
+          test -n "$ART_ID" && test "$ART_ID" != "null"
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/packwiz/packwiz/actions/artifacts/${ART_ID}/zip" -o .tools/packwiz.zip
+          unzip -oq .tools/packwiz.zip -d .tools/extracted
+          BIN=$(find .tools/extracted -type f -name 'packwiz' | head -n1)
+          test -n "$BIN"
+          chmod +x "$BIN"
+          cp "$BIN" .tools/packwiz
+          .tools/packwiz --version
+          echo "$GITHUB_WORKSPACE/.tools" >> "$GITHUB_PATH"
 
       - name: Init pack
         run: packwiz init --reinit -y --name QuestForge --author Maximka10 --version 0.1.0 --mc-version 1.20.1 --modloader forge --forge-version 47.4.23
@@ -48,37 +64,56 @@ jobs:
       - name: Refresh
         run: packwiz refresh
 
-      - name: Export
+      - name: Export Modrinth pack
         run: packwiz modrinth export -o QuestForge.mrpack
 
-      - name: Forge installer
+      - name: Install Forge 47.4.23 client profile
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p forge-client .minecraft
-          curl -fL 'https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.23/forge-1.20.1-47.4.23-installer.jar' -o forge-client/installer.jar
-          java -jar forge-client/installer.jar --installClient --targetDir "$GITHUB_WORKSPACE/.minecraft"
+          curl -fsSL 'https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.23/forge-1.20.1-47.4.23-installer.jar' \
+            -o forge-client/installer.jar
+          echo 'ed31ce02ac69176f34353235cb2508d5a0f1e0881  forge-client/installer.jar' | sha1sum -c -
+          java -Djava.awt.headless=true -jar forge-client/installer.jar --installClient --targetDir "$GITHUB_WORKSPACE/.minecraft"
+          test -d .minecraft/versions/1.20.1-forge-47.4.23
 
-      - name: Assemble drop-in
+      - name: Assemble ready .minecraft tree
         shell: bash
         run: |
           set -euo pipefail
           rm -rf drop-in
-          mkdir -p drop-in/versions drop-in/mods drop-in/config drop-in/defaultconfigs drop-in/kubejs
+          mkdir -p drop-in/mods drop-in/config drop-in/defaultconfigs drop-in/kubejs drop-in/resourcepacks drop-in/shaderpacks drop-in/versions
           cp -a mods/. drop-in/mods/
           cp -a config/. drop-in/config/ 2>/dev/null || true
           cp -a defaultconfigs/. drop-in/defaultconfigs/ 2>/dev/null || true
           cp -a kubejs/. drop-in/kubejs/ 2>/dev/null || true
+          cp -a resourcepacks/. drop-in/resourcepacks/ 2>/dev/null || true
+          cp -a shaderpacks/. drop-in/shaderpacks/ 2>/dev/null || true
           cp -a .minecraft/versions/. drop-in/versions/
-          printf '%s\n' 'QuestForge 0.1.0 / Minecraft 1.20.1 / Forge 47.4.23' > drop-in/INSTALL.txt
-          printf '%s\n' 'Copy the contents into .minecraft. The launcher may download missing vanilla libraries/assets on first launch.' >> drop-in/INSTALL.txt
+          cat > drop-in/INSTALL.txt <<'EOF'
+QuestForge 0.1.0
+Minecraft 1.20.1
+Forge 47.4.23
+Java 17 x64
 
-      - name: Zip
-        run: zip -r QuestForge-drop-in.zip drop-in
+Copy everything inside this folder into .minecraft.
+The version folder is already included under versions/.
+The official launcher can download missing vanilla libraries/assets on first launch.
+Recommended RAM: 8-10 GB.
+For a clean first run, create a new instance/world and do not reuse another pack's configs.
+EOF
+          test -f drop-in/versions/1.20.1-forge-47.4.23/1.20.1-forge-47.4.23.json
 
-      - name: Upload artifacts
+      - name: Package ready files
+        run: zip -r QuestForge-1.20.1-Forge-47.4.23-ready.zip drop-in
+
+      - name: Upload ready artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: QuestForge-drop-in
+          name: QuestForge-1.20.1-Forge-47.4.23-ready
           path: |
             QuestForge.mrpack
-            QuestForge-drop-in.zip
+            QuestForge-1.20.1-Forge-47.4.23-ready.zip
+          if-no-files-found: error
           retention-days: 7
