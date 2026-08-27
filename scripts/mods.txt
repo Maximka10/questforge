@@ -5,6 +5,7 @@
 cf|ftb-library-forge
 cf|ftb-quests-forge
 cf|ftb-xmod-compat
+cf|kubejs
 cf|jei
 cf|jade
 cf|controlling
