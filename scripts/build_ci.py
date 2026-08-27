@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / '.tools'
 PACKWIZ = Path(shutil.which('packwiz') or (Path.home() / 'go' / 'bin' / 'packwiz'))
 FORGE_URL = 'https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.23/forge-1.20.1-47.4.23-installer.jar'
-FORGE_SHA1 = 'ed31ce02ac69176f34353235cb2508d5a0f1e0881'
+FORGE_SHA1 = 'ed31ce02ac69176f34353235cb2508d5a0f1e088'
 FORGE_INSTALLER = TOOLS / 'forge-installer.jar'
 
 
