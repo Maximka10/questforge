@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   build:
@@ -19,23 +18,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install packwiz from latest official build
+      - name: Install packwiz
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p .tools
-          RUN_JSON=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
-            'https://api.github.com/repos/packwiz/packwiz/actions/runs?status=success&per_page=20')
-          RUN_ID=$(printf '%s' "$RUN_JSON" | jq -r '.workflow_runs[] | select(.name == "Go") | .id' | head -n1)
-          test -n "$RUN_ID" && test "$RUN_ID" != "null"
-          ART_JSON=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
-            "https://api.github.com/repos/packwiz/packwiz/actions/runs/${RUN_ID}/artifacts")
-          ART_ID=$(printf '%s' "$ART_JSON" | jq -r '.artifacts[] | select(.name | test("Linux 64-bit")) | .id' | head -n1)
-          test -n "$ART_ID" && test "$ART_ID" != "null"
-          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
-            "https://api.github.com/repos/packwiz/packwiz/actions/artifacts/${ART_ID}/zip" -o .tools/packwiz.zip
+          curl -fL 'https://nightly.link/packwiz/packwiz/workflows/go/main/Linux%2064-bit%20x86.zip' -o .tools/packwiz.zip
           unzip -oq .tools/packwiz.zip -d .tools/extracted
           BIN=$(find .tools/extracted -type f -name 'packwiz' | head -n1)
           test -n "$BIN"
@@ -44,10 +32,10 @@ jobs:
           .tools/packwiz --version
           echo "$GITHUB_WORKSPACE/.tools" >> "$GITHUB_PATH"
 
-      - name: Init pack
+      - name: Initialize pack
         run: packwiz init --reinit -y --name QuestForge --author Maximka10 --version 0.1.0 --mc-version 1.20.1 --modloader forge --forge-version 47.4.23
 
-      - name: Install mods
+      - name: Resolve and download mods
         shell: bash
         run: |
           set -euo pipefail
@@ -58,25 +46,25 @@ jobs:
             packwiz mr install "$slug" -y
           done < scripts/mods.txt
 
-      - name: Generate quests
+      - name: Generate Quest Book
         run: python3 scripts/generate_quests.py
 
-      - name: Refresh
+      - name: Refresh pack index
         run: packwiz refresh
 
-      - name: Export Modrinth pack
+      - name: Export Modrinth package
         run: packwiz modrinth export -o QuestForge.mrpack
 
-      - name: Install Forge 47.4.23 client profile
+      - name: Install Forge 47.4.23
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p forge-client .minecraft
-          curl -fsSL 'https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.23/forge-1.20.1-47.4.23-installer.jar' \
-            -o forge-client/installer.jar
+          curl -fsSL 'https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.23/forge-1.20.1-47.4.23-installer.jar' -o forge-client/installer.jar
           echo 'ed31ce02ac69176f34353235cb2508d5a0f1e0881  forge-client/installer.jar' | sha1sum -c -
           java -Djava.awt.headless=true -jar forge-client/installer.jar --installClient --targetDir "$GITHUB_WORKSPACE/.minecraft"
-          test -d .minecraft/versions/1.20.1-forge-47.4.23
+          test -f .minecraft/versions/1.20.1-forge-47.4.23/1.20.1-forge-47.4.23.json
+          test -f .minecraft/versions/1.20.1-forge-47.4.23/1.20.1-forge-47.4.23.jar
 
       - name: Assemble ready .minecraft tree
         shell: bash
@@ -97,18 +85,18 @@ Minecraft 1.20.1
 Forge 47.4.23
 Java 17 x64
 
-Copy everything inside this folder into .minecraft.
-The version folder is already included under versions/.
-The official launcher can download missing vanilla libraries/assets on first launch.
+Copy everything inside this folder into %APPDATA%\\.minecraft.
+The folder versions\\1.20.1-forge-47.4.23 is already included.
+The official launcher downloads missing vanilla libraries/assets on first run.
 Recommended RAM: 8-10 GB.
-For a clean first run, create a new instance/world and do not reuse another pack's configs.
+Use a fresh world for the first run.
 EOF
           test -f drop-in/versions/1.20.1-forge-47.4.23/1.20.1-forge-47.4.23.json
 
-      - name: Package ready files
+      - name: Package ready tree
         run: zip -r QuestForge-1.20.1-Forge-47.4.23-ready.zip drop-in
 
-      - name: Upload ready artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: QuestForge-1.20.1-Forge-47.4.23-ready
@@ -116,4 +104,4 @@ EOF
             QuestForge.mrpack
             QuestForge-1.20.1-Forge-47.4.23-ready.zip
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
