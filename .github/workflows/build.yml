@@ -1,17 +1,24 @@
-name: QuestForge Build
-on: [push, workflow_dispatch]
+name: "QuestForge Build"
+
+on:
+  push:
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
       - name: Build QuestForge
         run: python3 scripts/build_ci.py
-      - uses: actions/upload-artifact@v4
+      - name: Upload ready package
+        uses: actions/upload-artifact@v4
         with:
           name: QuestForge-1.20.1-Forge-47.4.23-ready
           path: |
