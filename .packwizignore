@@ -1,0 +1,9 @@
+packwiz.exe
+.tools/
+builds/
+server/instance/
+logs/
+crash-reports/
+saves/
+world/
+.git/
