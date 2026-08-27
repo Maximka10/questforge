@@ -1,103 +1,17 @@
 name: QuestForge Build
-
-on:
-  push:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
+on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Install packwiz
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p .tools
-          curl -fL 'https://nightly.link/packwiz/packwiz/workflows/go/main/Linux%2064-bit%20x86.zip' -o .tools/packwiz.zip
-          unzip -oq .tools/packwiz.zip -d .tools/extracted
-          BIN=$(find .tools/extracted -type f -name 'packwiz' | head -n1)
-          test -n "$BIN"
-          chmod +x "$BIN"
-          cp "$BIN" .tools/packwiz
-          .tools/packwiz --version
-          echo "$GITHUB_WORKSPACE/.tools" >> "$GITHUB_PATH"
-
-      - name: Initialize pack
-        run: packwiz init --reinit -y --name QuestForge --author Maximka10 --version 0.1.0 --mc-version 1.20.1 --modloader forge --forge-version 47.4.23
-
-      - name: Resolve and download mods
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS='|' read -r source slug; do
-            [[ -z "$source" || "$source" == \#* ]] && continue
-            [[ "$source" == "mr" ]] || continue
-            echo "Installing $slug"
-            packwiz mr install "$slug" -y
-          done < scripts/mods.txt
-
-      - name: Generate Quest Book
-        run: python3 scripts/generate_quests.py
-
-      - name: Refresh pack index
-        run: packwiz refresh
-
-      - name: Export Modrinth package
-        run: packwiz modrinth export -o QuestForge.mrpack
-
-      - name: Install Forge 47.4.23
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p forge-client .minecraft
-          curl -fsSL 'https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.23/forge-1.20.1-47.4.23-installer.jar' -o forge-client/installer.jar
-          echo 'ed31ce02ac69176f34353235cb2508d5a0f1e0881  forge-client/installer.jar' | sha1sum -c -
-          java -Djava.awt.headless=true -jar forge-client/installer.jar --installClient --targetDir "$GITHUB_WORKSPACE/.minecraft"
-          test -f .minecraft/versions/1.20.1-forge-47.4.23/1.20.1-forge-47.4.23.json
-          test -f .minecraft/versions/1.20.1-forge-47.4.23/1.20.1-forge-47.4.23.jar
-
-      - name: Assemble ready .minecraft tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf drop-in
-          mkdir -p drop-in/mods drop-in/config drop-in/defaultconfigs drop-in/kubejs drop-in/resourcepacks drop-in/shaderpacks drop-in/versions
-          cp -a mods/. drop-in/mods/
-          cp -a config/. drop-in/config/ 2>/dev/null || true
-          cp -a defaultconfigs/. drop-in/defaultconfigs/ 2>/dev/null || true
-          cp -a kubejs/. drop-in/kubejs/ 2>/dev/null || true
-          cp -a resourcepacks/. drop-in/resourcepacks/ 2>/dev/null || true
-          cp -a shaderpacks/. drop-in/shaderpacks/ 2>/dev/null || true
-          cp -a .minecraft/versions/. drop-in/versions/
-          cat > drop-in/INSTALL.txt <<'EOF'
-QuestForge 0.1.0
-Minecraft 1.20.1
-Forge 47.4.23
-Java 17 x64
-
-Copy everything inside this folder into %APPDATA%\\.minecraft.
-The folder versions\\1.20.1-forge-47.4.23 is already included.
-The official launcher downloads missing vanilla libraries/assets on first run.
-Recommended RAM: 8-10 GB.
-Use a fresh world for the first run.
-EOF
-          test -f drop-in/versions/1.20.1-forge-47.4.23/1.20.1-forge-47.4.23.json
-
-      - name: Package ready tree
-        run: zip -r QuestForge-1.20.1-Forge-47.4.23-ready.zip drop-in
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Build QuestForge
+        run: python3 scripts/build_ci.py
+      - uses: actions/upload-artifact@v4
         with:
           name: QuestForge-1.20.1-Forge-47.4.23-ready
           path: |
