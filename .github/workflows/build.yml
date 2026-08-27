@@ -1,0 +1,84 @@
+name: QuestForge Build
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Install packwiz
+        run: go install github.com/packwiz/packwiz@latest
+
+      - name: Put packwiz on PATH
+        run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Init pack
+        run: packwiz init --reinit -y --name QuestForge --author Maximka10 --version 0.1.0 --mc-version 1.20.1 --modloader forge --forge-version 47.4.23
+
+      - name: Install mods
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS='|' read -r source slug; do
+            [[ -z "$source" || "$source" == \#* ]] && continue
+            [[ "$source" == "mr" ]] || continue
+            echo "Installing $slug"
+            packwiz mr install "$slug" -y
+          done < scripts/mods.txt
+
+      - name: Generate quests
+        run: python3 scripts/generate_quests.py
+
+      - name: Refresh
+        run: packwiz refresh
+
+      - name: Export
+        run: packwiz modrinth export -o QuestForge.mrpack
+
+      - name: Forge installer
+        run: |
+          mkdir -p forge-client .minecraft
+          curl -fL 'https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.23/forge-1.20.1-47.4.23-installer.jar' -o forge-client/installer.jar
+          java -jar forge-client/installer.jar --installClient --targetDir "$GITHUB_WORKSPACE/.minecraft"
+
+      - name: Assemble drop-in
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf drop-in
+          mkdir -p drop-in/versions drop-in/mods drop-in/config drop-in/defaultconfigs drop-in/kubejs
+          cp -a mods/. drop-in/mods/
+          cp -a config/. drop-in/config/ 2>/dev/null || true
+          cp -a defaultconfigs/. drop-in/defaultconfigs/ 2>/dev/null || true
+          cp -a kubejs/. drop-in/kubejs/ 2>/dev/null || true
+          cp -a .minecraft/versions/. drop-in/versions/
+          printf '%s\n' 'QuestForge 0.1.0 / Minecraft 1.20.1 / Forge 47.4.23' > drop-in/INSTALL.txt
+          printf '%s\n' 'Copy the contents into .minecraft. The launcher may download missing vanilla libraries/assets on first launch.' >> drop-in/INSTALL.txt
+
+      - name: Zip
+        run: zip -r QuestForge-drop-in.zip drop-in
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuestForge-drop-in
+          path: |
+            QuestForge.mrpack
+            QuestForge-drop-in.zip
+          retention-days: 7
