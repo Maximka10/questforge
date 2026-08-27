@@ -11,9 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / '.tools'
-PACKWIZ = TOOLS / 'packwiz'
-PACKWIZ_ZIP = TOOLS / 'packwiz.zip'
-PACKWIZ_URL = 'https://nightly.link/packwiz/packwiz/workflows/go/main/Linux%2064-bit%20x86.zip'
+PACKWIZ = Path(shutil.which('packwiz') or (Path.home() / 'go' / 'bin' / 'packwiz'))
 FORGE_URL = 'https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.23/forge-1.20.1-47.4.23-installer.jar'
 FORGE_SHA1 = 'ed31ce02ac69176f34353235cb2508d5a0f1e0881'
 FORGE_INSTALLER = TOOLS / 'forge-installer.jar'
@@ -40,21 +38,12 @@ def download(url: str, dest: Path) -> None:
 
 
 def ensure_packwiz() -> None:
-    if PACKWIZ.exists():
-        return
-    if PACKWIZ_ZIP.exists():
-        PACKWIZ_ZIP.unlink()
-    download(PACKWIZ_URL, PACKWIZ_ZIP)
-    extracted = TOOLS / 'packwiz-extracted'
-    if extracted.exists():
-        shutil.rmtree(extracted)
-    extracted.mkdir(parents=True)
-    with zipfile.ZipFile(PACKWIZ_ZIP) as zf:
-        zf.extractall(extracted)
-    candidates = list(extracted.rglob('packwiz'))
-    if not candidates:
-        raise RuntimeError('packwiz executable was not found in the official artifact')
-    shutil.copy2(candidates[0], PACKWIZ)
+    global PACKWIZ
+    found = shutil.which('packwiz')
+    if found:
+        PACKWIZ = Path(found)
+    if not PACKWIZ.exists():
+        raise RuntimeError('packwiz is not installed; CI must install github.com/packwiz/packwiz before running this script')
     PACKWIZ.chmod(PACKWIZ.stat().st_mode | 0o111)
 
 
@@ -73,7 +62,69 @@ def install_mods() -> None:
             raise RuntimeError(f'Unsupported manifest source: {source}')
 
 
+def test_server() -> None:
+    server = ROOT / 'server-test'
+    if server.exists():
+        shutil.rmtree(server)
+    server.mkdir()
+    installer = server / 'forge-installer.jar'
+    shutil.copy2(FORGE_INSTALLER, installer)
+    run('java', '-Djava.awt.headless=true', '-jar', str(installer), '--installServer', str(server), cwd=ROOT)
+
+    client_only = {
+        'jei', 'embeddium', 'oculus', 'entityculling', 'controlling', 'mouse-tweaks',
+        'xaeros-minimap', 'xaeros-world-map', 'appleskin'
+    }
+    mods_src = ROOT / 'mods'
+    mods_dst = server / 'mods'
+    mods_dst.mkdir(exist_ok=True)
+    for jar in mods_src.glob('*.jar'):
+        name = jar.name.lower()
+        if any(token in name for token in client_only):
+            continue
+        shutil.copy2(jar, mods_dst / jar.name)
+    for rel in ('config', 'defaultconfigs', 'kubejs'):
+        src = ROOT / rel
+        if src.exists():
+            shutil.copytree(src, server / rel, dirs_exist_ok=True)
+    (server / 'eula.txt').write_text('eula=true\n', encoding='utf-8')
+    jvm_args = server / 'user_jvm_args.txt'
+    if not jvm_args.exists():
+        jvm_args.write_text('', encoding='utf-8')
+    unix_args = server / 'libraries' / 'net' / 'minecraftforge' / 'forge' / '1.20.1-47.4.23' / 'unix_args.txt'
+    if not unix_args.exists():
+        raise RuntimeError(f'Forge server unix_args.txt missing: {unix_args}')
+
+    log = server / 'server.log'
+    with log.open('w', encoding='utf-8') as fh:
+        proc = subprocess.Popen(
+            ['java', '@user_jvm_args.txt', '@libraries/net/minecraftforge/forge/1.20.1-47.4.23/unix_args.txt', 'nogui'],
+            cwd=server,
+            stdout=fh,
+            stderr=subprocess.STDOUT,
+        )
+        try:
+            code = proc.wait(timeout=150)
+        except subprocess.TimeoutExpired:
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=5)
+            code = 124
+    text = log.read_text(encoding='utf-8', errors='replace')
+    print(text[-12000:], flush=True)
+    fatal_markers = ('ModLoadingException', 'Exception in server tick loop', 'FATAL', 'ERROR')
+    bad = [line for line in text.splitlines() if any(marker in line for marker in fatal_markers)]
+    if bad:
+        raise RuntimeError('Dedicated server reported fatal/error lines:\n' + '\n'.join(bad[-30:]))
+    if code not in (0, 124):
+        raise RuntimeError(f'Dedicated server exited unexpectedly with code {code}')
+
+
 def main() -> int:
+    TOOLS.mkdir(parents=True, exist_ok=True)
     ensure_packwiz()
     run(str(PACKWIZ), '--version')
     run(str(PACKWIZ), 'init', '--reinit', '-y', '--name', 'QuestForge', '--author', 'Maximka10', '--version', '0.1.0', '--mc-version', '1.20.1', '--modloader', 'forge', '--forge-version', '47.4.23')
@@ -100,12 +151,13 @@ def main() -> int:
     if not (version_dir / '1.20.1-forge-47.4.23.jar').exists():
         raise RuntimeError(f'Forge version JAR missing: {version_dir}')
 
+    test_server()
+
     drop = ROOT / 'drop-in'
     if drop.exists():
         shutil.rmtree(drop)
     for rel in ('mods', 'config', 'defaultconfigs', 'kubejs', 'resourcepacks', 'shaderpacks', 'versions'):
         (drop / rel).mkdir(parents=True, exist_ok=True)
-
     for rel in ('mods', 'config', 'defaultconfigs', 'kubejs', 'resourcepacks', 'shaderpacks'):
         src = ROOT / rel
         if src.exists():
@@ -113,15 +165,11 @@ def main() -> int:
     shutil.copytree(minecraft / 'versions', drop / 'versions', dirs_exist_ok=True)
 
     (drop / 'INSTALL.txt').write_text(
-        'QuestForge 0.1.0\n'
-        'Minecraft 1.20.1\n'
-        'Forge 47.4.23\n'
-        'Java 17 x64\n\n'
+        'QuestForge 0.1.0\nMinecraft 1.20.1\nForge 47.4.23\nJava 17 x64\n\n'
         'Copy everything inside this folder into %APPDATA%\\.minecraft.\n'
         'The versions\\1.20.1-forge-47.4.23 folder is already included.\n'
         'The official launcher may download missing vanilla libraries/assets on first run.\n'
-        'Recommended RAM: 8-10 GB.\n'
-        'Start with a fresh world.\n',
+        'Recommended RAM: 8-10 GB.\nStart with a fresh world.\n',
         encoding='utf-8',
     )
 
