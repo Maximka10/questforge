@@ -15,6 +15,18 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Go 1.24
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: false
+      - name: Install packwiz
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/packwiz/packwiz@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          "$(go env GOPATH)/bin/packwiz" --version
       - name: Build QuestForge
         run: python3 scripts/build_ci.py
       - name: Upload ready package
