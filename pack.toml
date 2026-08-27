@@ -1,0 +1,17 @@
+name = "QuestForge"
+author = "Maximka10"
+version = "0.1.0"
+description = "Progression-focused Minecraft 1.20.1 Forge pack with exploration, building, automation, technology, magic, colonies and quests."
+pack-format = "packwiz:1.1.0"
+
+[index]
+file = "index.toml"
+hash-format = "sha256"
+hash = "0000000000000000000000000000000000000000000000000000000000000000"
+
+[versions]
+minecraft = "1.20.1"
+forge = "47.4.23"
+
+[options]
+acceptable-game-versions = ["1.20.1"]
