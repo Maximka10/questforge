@@ -1,7 +1,8 @@
 # QuestForge 0.1.0
-# source|Modrinth slug
-mr|ftb-library-forge
-mr|ftb-quests-forge
+# source|project slug
+cf|ftb-library-forge
+cf|ftb-quests-forge
+cf|ftb-xmod-compat
 mr|kubejs
 mr|jei
 mr|jade
@@ -50,5 +51,6 @@ mr|artifacts
 mr|minecolonies
 mr|structurize
 mr|domum-ornamentum
-# Optional experimental AI companion, excluded from the stable pack until validated.
+mr|ftb-quests-optimizer
+# Optional experimental AI companion, excluded from stable pack until validated.
 # mr|ai-buddies
