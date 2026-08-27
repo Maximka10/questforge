@@ -1,72 +1,54 @@
 # QuestForge 0.1.0
-# Format: source|slug-or-file-url
-# packwiz resolves dependencies automatically.
-# Core / quests
-cf|ftb-library-forge
-cf|ftb-quests-forge
-cf|ftb-xmod-compat
-cf|kubejs
-cf|jei
-cf|jade
-cf|controlling
-cf|configured
-cf|mouse-tweaks
-cf|polymorph
-cf|appleskin
-
-# Performance
-cf|embeddium
-cf|oculus
-cf|ferritecore
-cf|modernfix
-cf|clumps
-cf|entityculling
-
-# Navigation / QoL
-cf|waystones
-cf|nature-compass
-cf|explorers-compass
-cf|corpse
-cf|carry-on
-
-# World / exploration
-cf|alexs-caves
-cf|citadel
-cf|biomes-o-plenty
-cf|yungs-better-dungeons
-cf|yungs-better-strongholds
-cf|yungs-api
-cf|when-dungeons-arise
-
-# Building / decoration
-cf|chipped
-cf|framedblocks
-cf|supplementaries
-cf|moonlight
-
-# Storage / inventory
-cf|sophisticated-core
-cf|sophisticated-backpacks
-cf|functional-storage
-cf|storagedrawers
-
-# Technology / automation
-cf|create
-cf|create-steam-n-rails
-cf|mekanism
-cf|mekanism-generators
-cf|farmers-delight
-
-# Magic / combat
-cf|ars-nouveau
-cf|irons-spells-n-spellbooks
-cf|apotheosis
-cf|artifacts
-
-# NPC / colony
-cf|minecolonies
-cf|structurize
-cf|domum-ornamentum
-
-# Experimental AI companion. Enable only after a clean-pack validation.
-# cf|ai-buddies
+# source|Modrinth slug
+mr|ftb-library-forge
+mr|ftb-quests-forge
+mr|kubejs
+mr|jei
+mr|jade
+mr|controlling
+mr|mouse-tweaks
+mr|polymorph
+mr|appleskin
+mr|embeddium
+mr|oculus
+mr|ferritecore
+mr|modernfix
+mr|clumps
+mr|entityculling
+mr|waystones
+mr|natures-compass
+mr|explorers-compass
+mr|corpse
+mr|carry-on
+mr|xaeros-minimap
+mr|xaeros-world-map
+mr|alexs-caves
+mr|citadel
+mr|biomes-o-plenty
+mr|yungs-better-dungeons
+mr|yungs-better-strongholds
+mr|yungs-api
+mr|when-dungeons-arise
+mr|chipped
+mr|framedblocks
+mr|supplementaries
+mr|moonlight
+mr|sophisticated-core
+mr|sophisticated-backpacks
+mr|functional-storage
+mr|storagedrawers
+mr|create
+mr|create-steam-n-rails
+mr|create-6.0.8-backported-fixes
+mr|mekanism
+mr|mekanism-generators
+mr|farmers-delight
+mr|ars-nouveau
+mr|irons-spells-n-spellbooks
+mr|apotheosis
+mr|artifacts
+mr|minecolonies
+mr|structurize
+mr|domum-ornamentum
+# Optional experimental AI companion, excluded from the stable pack until validated.
+# mr|ai-buddies
