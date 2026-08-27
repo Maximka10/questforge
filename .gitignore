@@ -1,0 +1,24 @@
+# Generated binaries and caches
+packwiz.exe
+.tools/
+.cache/
+builds/
+mods/*.jar
+server/instance/
+
+# Minecraft runtime
+logs/
+crash-reports/
+saves/
+world/
+
+# Local secrets
+.env
+*.secret
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
